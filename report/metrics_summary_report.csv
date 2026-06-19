@@ -1,0 +1,5 @@
+Video Name,File Size (MB),Size (Bytes),Baseline Enc Time (s),Proposed Enc Time (s),Baseline Dec Time (s),Proposed Dec Time (s),Baseline CPU (%),Proposed CPU (%),Baseline Throughput (Mbps),Proposed Throughput (Mbps)
+MSFC_10112024_Trades in Space~orig.mp4,1119.91,1174309658,0.75442,2.44902,0.78234,0.05441,22.0,17.1,12008.14,172669.14
+MSFC_10112024_Trades in Space~large.mp4,104.5,109579284,0.08926,0.18721,0.06297,0.01272,23.9,10.5,13922.43,68856.62
+MSFC_10112024_Trades in Space~medium.mp4,45.24,47434592,0.02099,0.07382,0.03587,0.01508,17.1,1.2,10579.87,25122.26
+MSFC_10112024_Trades in Space~small.mp4,27.28,28604144,0.01151,0.0423,0.01081,0.00281,12.5,1.2,21169.24,81433.2

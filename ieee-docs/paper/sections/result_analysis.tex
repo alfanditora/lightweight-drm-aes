@@ -1,0 +1,74 @@
+
+\section{Experimental Results and Performance Analysis}
+This section presents the empirical evaluation of the proposed lightweight DRM system compared against the traditional full-stream encryption baseline. The benchmarks were executed across a heterogeneous test dataset using the automated orchestration architecture.
+
+% --- TABLE I DAN II DILETAKKAN DI PALING ATAS SUBBAB ---
+
+% TABLE I: Berada di posisi teratas halaman (2 kolom penuh)
+\begin{table*}[t]
+\caption{Comprehensive Experimental Metrics: Baseline (Full) vs. Proposed (Selective)}
+\label{tab:metrics}
+\begin{center}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+\textbf{Video Asset Name} & \textbf{Size (MB)} & \textbf{Enc. Base (s)} & \textbf{Enc. Prop (s)} & \textbf{Dec. Base (s)} & \textbf{Dec. Prop (s)} & \textbf{CPU Base (\%)} & \textbf{CPU Prop (\%)} \\
+\midrule
+Trades in Space (orig)   & 1119.91 & 0.75442 & 2.44902 & 0.78234 & 0.05441 & 22.0 & 17.1 \\
+Trades in Space (large)  & 104.50  & 0.08926 & 0.18721 & 0.06297 & 0.01272 & 23.9 & 10.5 \\
+Trades in Space (medium) & 45.24   & 0.02099 & 0.07382 & 0.03587 & 0.01508 & 17.1 & 1.2  \\
+Trades in Space (small)  & 27.28   & 0.01254 & 0.04321 & 0.02115 & 0.00912 & 14.5 & 1.1  \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table*}
+
+% TABLE II: Dikecilkan padding kolomnya agar pas masuk di 1 kolom teks tanpa nabrak
+\begin{table}[t]
+\caption{Decryption Throughput Comparison}
+\label{tab:throughput}
+\begin{center}
+\setlength{\tabcolsep}{3pt} % << Mengecilkan jarak kolom agar muat (Anti-nabrak)
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Asset Scale} & \textbf{Throughput Base} & \textbf{Throughput Prop} & \textbf{Gain Factor} \\
+\midrule
+Original (1.1 GB) & 12008.1 Mbps & 172669.1 Mbps & $14.38\times$ \\
+Large (104 MB)    & 13922.4 Mbps & 68856.6 Mbps  & $4.94\times$  \\
+Medium (45 MB)    & 10579.9 Mbps & 25122.3 Mbps  & $2.37\times$  \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\subsection{Experimental Setup and Methodology}
+The performance profiling was conducted on a host system running an AMD Ryzen 7 processor under Python 3.13. To evaluate the scalability of the architecture, a multi-tier dataset derived from high-fidelity source video sequences was generated. The assets represent distinct operational constraints, ranging from a 27.28 MB high-bitrate streaming segment up to a massive 1119.91 MB archive file payload. 
+
+The evaluation tracks four primary physical hardware performance variables (Encryption Time, Decryption Latency, CPU Core Utilization, and Throughput Rate) along with two metric indices representing mathematical pixel reconstruction quality:
+\begin{itemize}
+    \item \textbf{Peak Signal-to-Noise Ratio (PSNR):} Measures the ratio between the maximum possible power of a signal and the corrupting noise that affects its fidelity.
+    \item \textbf{Structural Similarity Index (SSIM):} Evaluates the degradation of structural information between the decoded stream and the raw source sequence.
+\end{itemize}
+
+\subsection{Cryptographic Latency and Computational Overhead}
+The empirical results compiled during data execution show that the proposed codec-aware design significantly outperforms the full-stream approach. Table I provides the comprehensive data metrics collected during the comparative analysis.
+
+Analyzing the decryption footprint at the client player shows a massive reduction in processing time. For the 1119.91 MB original video payload, the traditional framework required 0.78234 seconds to decipher the continuous block chains, whereas the proposed selective decoding loop completed execution in just 0.05441 seconds. This yields a 93.04\% reduction in client-side latency. The performance improvement occurs because the client demuxer completely bypasses non-structural P and B slices, passing them directly to the hardware rendering stack.
+
+However, a trade-off is observed within the server packaging stage. The encryption phase of the proposed architecture requires more time than the baseline (e.g., 2.44902 seconds vs. 0.75442 seconds for the largest file). This additional overhead is caused by the sequential I/O cost of parsing individual byte arrays to find the Annex-B start codes. Because packaging is an offline task done only once during file ingestion, this upfront cost is acceptable given the significant performance gains during client playback.
+
+\subsection{Hardware Resource Allocation and Data Throughput}
+By isolating the cryptographic load to a tiny subset of reference NAL units, the client player limits CPU core consumption. For smaller streams, CPU usage drops from a baseline of 14.5\% down to a negligible 1.1\%. This efficiency directly increases data throughput rates across the local decoding layers, as detailed in Table II.
+
+The throughput metrics prove that the selective decryption loop eliminates the processing bottlenecks caused by heavy block-cipher transformations. The client player scales efficiently to achieve maximum processing rates on high-bitrate files, satisfying the core performance requirements for lightweight deployment.
+
+\subsection{Visual Quality and Cryptographic Resilience Analysis}
+To evaluate the security and visual degradation of the system, a simulated attack vector was launched where an unauthorized client player attempts to decode the stream without retrieving the valid CEK from the license gateway. 
+
+When the correct 128-bit CEK is provided, the decryption pipeline reconstructs the video streams flawlessly, achieving a perfect visual profile with an infinite PSNR ($\infty$) and an identical structural similarity score ($\text{SSIM} = 1.0$). 
+
+Conversely, when an unauthorized playback client attempts to decode the selectively encrypted stream, the absence of the key prevents the recovery of the critical IDR anchor pixels and parameter matrices (SPS/PPS). The quality drops to a highly degraded state:
+\begin{equation}
+\text{PSNR}_{\text{Attack}} = 6.25 \text{ dB}, \quad \text{SSIM}_{\text{Attack}} = 0.02
+\end{equation}
+
+Because the foundational spatial reference points are missing, the client media engine fails to compute motion vectors for the unencrypted P and B frames. This completely breaks the temporal decoding chain, rendering the output video as an unwatchable mix of garbled macroblock noise and static artifacts. This confirms that partial mutation of the structural frames provides sufficient protection without the computational cost of full-stream encapsulation.

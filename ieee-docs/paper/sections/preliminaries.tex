@@ -1,0 +1,40 @@
+\section{Preliminaries and Related Work}
+To establish a rigorous foundation for the proposed lightweight Digital Rights Management (DRM) system, it is essential to analyze the cryptographic primitives and the multimedia codec structural constraints that govern the pipeline. This section formalizes the mathematics of the Advanced Encryption Standard (AES) in Counter (CTR) mode and details the structural syntax of the H.264/Advanced Video Coding (AVC) bitstream specification.
+
+\subsection{Advanced Encryption Standard in Counter Mode}
+The Advanced Encryption Standard (AES) is a symmetric block cipher standardized by the National Institute of Standards and Technology (NIST) \cite{nist2001aes}. It operates on fixed-size data blocks of 128 bits ($16$ bytes) using cryptographic key lengths of 128, 192, or 256 bits through a series of substitution-permutation network rounds. 
+
+In high-throughput multimedia streaming applications, traditional block cipher modes of operation present severe architectural and operational limitations. Electronic Codebook (ECB) mode processes each data block independently with the same key, preserving visual patterns and exposing identical blocks of plaintext within raw or structured video payloads. While Cipher Block Chaining (CBC) mode obfuscates these patterns by exclusive-ORing (XOR) the current plaintext block with the previous ciphertext block, it introduces a sequential dependency chain. This chaining prevents parallel execution across modern multi-core hardware platforms and causes total stream desynchronization if packet loss occurs during network transmission.
+
+To circumvent these latency and processing overhead bottlenecks, the proposed DRM system adopts Counter (CTR) mode \cite{winkler2024selective}. CTR mode effectively transforms a block cipher into a stream cipher by applying the underlying block transformation exclusively to a monotonically increasing counter sequence. The output keystream is subsequently combined with the raw plaintext video payload via a bitwise XOR operation. Mathematically, the encryption of a plaintext block $P_i$ to yield a ciphertext block $C_i$ is defined as:
+\begin{equation}
+C_i = P_i \oplus \text{AES}_K(\text{IV} \parallel \text{Ctr}_i)
+\end{equation}
+Conversely, the client-side decryption sequence to recover $P_i$ from $C_i$ is defined as:
+\begin{equation}
+P_i = C_i \oplus \text{AES}_K(\text{IV} \parallel \text{Ctr}_i)
+\end{equation}
+where $K$ represents the 128-bit symmetric Content Encryption Key (CEK), $\text{IV}$ denotes a unique 64-bit Initialization Vector, and $\text{Ctr}_i$ represents a 64-bit block-specific counter value. 
+
+CTR mode is uniquely suited for lightweight DRM distribution networks due to three key properties:
+\begin{enumerate}
+    \item \textbf{Arbitrary Stream Lengths:} It operates without ciphertext padding overhead, meaning the size of the encrypted stream exactly matches the plaintext block byte length.
+    \item \textbf{Hardware Parallelization:} Because the input to the AES engine depends solely on the $\text{IV}$ and counter index $i$, multiple blocks can be encrypted or decrypted simultaneously across independent CPU cores or hardware acceleration pipelines.
+    \item \textbf{Random Access Streaming:} The client media engine can decrypt arbitrary video chunks seamlessly during user scrubbing (seeking) actions without needing to evaluate preceding bitstream blocks.
+\end{enumerate}
+
+\subsection{H.264/AVC Structural Syntax and Data Units}
+The H.264/AVC standard optimizes multimedia streams through a two-layer architectural hierarchy: the Video Coding Layer (VCL) and the Network Abstraction Layer (NAL) \cite{wiegand2003overview}. The VCL contains the compressed representation of the spatial and temporal video data, whereas the NAL encapsulates this data into discrete packets (NAL units) configured for transport over heterogeneous network layouts.
+
+As illustrated in standard bitstream syntax, every NAL unit consists of a 1-byte header followed by a variable-length payload. The NAL unit header contains three critical bit-fields: a 1-bit forbidden zero field, a 2-bit \texttt{nal\_ref\_idc} field denoting packet relative priority, and a 5-bit \texttt{nal\_unit\_type} field specifying the underlying payload classification. 
+
+Modern compression mechanics leverage intra-frame and inter-frame dependencies to reduce data sizes. Frames are dynamically classified into three core types:
+\begin{itemize}
+    \item \textbf{Intra-coded (I) Frames:} Self-contained images coded using spatial prediction, requiring no external frame references for decoding.
+    \item \textbf{Predictive (P) Frames:} Inter-coded pictures using temporal prediction from a forward-directed reference frame.
+    \item \textbf{Bi-predictive (B) Frames:} Inter-coded pictures using bi-directional temporal prediction from both past and future reference frames.
+\end{itemize}
+
+A fundamental feature within the H.264 ecosystem is the Instantaneous Decoder Refresh (IDR) frame, mapped to \texttt{nal\_unit\_type} $= 5$. An IDR frame is an architectural barrier; no subsequent frames in the bitstream sequence can reference any historical frames positioned prior to it. Inter-frame decoding completely relies on the spatial reference mapping provided by the leading IDR frame. 
+
+By strategically targeting and encrypting only the high-priority structural frames (\texttt{nal\_unit\_type} $= 5$) alongside the critical Sequence Parameter Sets (SPS, \texttt{nal\_unit\_type} $= 7$) and Picture Parameter Sets (PPS, \texttt{nal\_unit\_type} $= 8$), the proposed system compromises the structural anchoring integrity of the stream \cite{winkler2024selective}. Without the valid spatial matrix profiles from the parameter sets and the foundational pixels of the IDR frames, the client-side decoder is rendered incapable of computing temporal motion vectors or spatial macroblock residuals for the unencrypted P and B frames. This selective approach degrades the video into an unwatchable visual state with minimal cryptographic expenditure.

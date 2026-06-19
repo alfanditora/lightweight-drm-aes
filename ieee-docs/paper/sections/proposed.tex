@@ -1,0 +1,33 @@
+\section{Proposed Lightweight DRM Architecture}
+The core objective of the proposed architecture is to decouple the high-throughput video content delivery network (CDN) from the sensitive cryptographic key management layer. To achieve a lightweight operational footprint, the system architecture is partitioned into three distinct operational layers: the Media Content Packager, the Centralized License Server, and the DRM Client Player. Fig. 1 illustrates the end-to-end architectural topology and data flow across these components.
+
+\subsection{The Media Content Packager Pipeline}
+The Media Content Packager acts as an offline ingestion engine that transforms standard, unprotected H.264/AVC video files into cryptographically secured assets. Rather than applying a blanket encryption sweep across the entire binary file payload, the packager deploys a lightweight, codec-aware parsing mechanism. 
+
+The inner operational sequence of the packaging pipeline is structured as follows:
+\begin{enumerate}
+    \item \textbf{Bitstream Parsing:} The packager ingests the raw H.264 transport stream and scans the continuous byte sequence to identify the start codes (\texttt{0x000001} or \texttt{0x00000001}). It extracts the subsequent 1-byte NAL unit header to evaluate the \texttt{nal\_unit\_type} bits.
+    \item \textbf{Structural Isolation:} NAL units with a \texttt{nal\_unit\_type} value of 5 (IDR frame), 7 (SPS), or 8 (PPS) are routed to the high-priority cryptographic queue. All other VCL units (P and B frame slices) bypass the cryptographic engine and are pushed directly to the output muxer in the clear.
+    \item \textbf{Key and IV Generation:} For each video asset, a 128-bit Content Encryption Key (CEK) and a 64-bit base Initialization Vector (IV) are generated using a cryptographically secure pseudo-random number generator (CSPRNG) \cite{barker2022recommendation}.
+    \item \textbf{Selective Encryption Processing:} The high-priority NAL unit payloads are encrypted via the AES-CTR engine utilizing the generated CEK and IV.
+    \item \textbf{Encapsulation and Metadata Injection:} The packager re-interleaves the newly encrypted structural NAL units with the unencrypted P/B units. To ensure the client player can correctly identify and initialize the decryption loop, a custom, unencrypted DRM Metadata Header is injected at the front of the output file container. This header encapsulates the globally unique asset identifier (\texttt{Content\_ID}) and the explicit $\text{IV}$ parameters.
+\end{enumerate}
+
+\subsection{Token-Based License Server Architecture}
+To prevent key exposure, Content Encryption Keys are never stored within the distributed media files or content delivery networks. Instead, the packager transmits a secure mapping tuple comprising $(\text{Content\_ID}, \text{CEK})$ to the Centralized License Server via a TLS 1.3 protected endpoint. The License Server manages key lookup, access control verification, and dynamic license dispatch.
+
+To minimize latency and eliminate the stateful tracking of client sessions, the license acquisition flow incorporates a token-based authentication mechanism using JSON Web Tokens (JWT) \cite{jones2015json}. When a client client requests access to a specific video stream, the sequence unfolds as follows:
+\begin{enumerate}
+    \item The client authenticates against the primary platform API Gateway using its user credentials.
+    \item Upon successful validation, the gateway issues a time-bound, ephemeral JWT signed with the server's private key using the RS256 algorithm. The token payload explicitly binds the user's identity, an expiration timestamp, and the authorized \texttt{Content\_ID}.
+    \item The client presents this signed JWT directly to the License Server's request endpoint.
+    \item The License Server verifies the cryptographic signature of the token using the gateway's public key, checks for token expiration, and extracts the embedded \texttt{Content\_ID}.
+    \item Upon successful validation, the server retrieves the corresponding 128-bit CEK from its hardware security module (HSM) or secure key database, wraps it in a secure JSON license response payload, and dispatches it back to the client player.
+\end{enumerate}
+
+\subsection{Client-Side Lightweight Decryption Loop}
+The DRM Client Player is engineered to perform real-time, low-overhead decryption directly within the media rendering pipeline. By isolating the cryptographic processing strictly to the required structural units, the client avoids filling CPU cache lines or consuming GPU acceleration cycles with unnecessary full-stream decipher operations.
+
+Upon loading the media asset, the player's custom demuxer reads the DRM Metadata Header to extract the \texttt{Content\_ID} and the base $\text{IV}$. The player then initiates an asynchronous handshake with the Centralized License Server, passing the signed JWT to acquire the 128-bit CEK. Once the CEK is securely loaded into the volatile memory space of the local cryptographic context, the real-time playback loop commences.
+
+As chunks of the H.264 stream are fed into the input buffer, the demuxer inspects the NAL unit headers in real-time. If a standard, unencrypted VCL unit (P or B frame) is detected, the packet bypasses the cryptographic subsystem completely and is piped directly to the hardware video decoder. Conversely, when an encrypted NAL unit (\texttt{nal\_unit\_type} $= 5, 7, \text{ or } 8$) is encountered, the player invokes a lightweight AES-CTR execution thread. The thread applies the XOR keystream to restore the plaintext NAL payload and seamlessly hands the reconstructed segment to the hardware decoder interface. This design ensures that the high-volume data path remains unencumbered by cryptographic latency.
