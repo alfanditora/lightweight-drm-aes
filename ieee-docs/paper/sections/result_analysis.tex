@@ -77,7 +77,7 @@ To evaluate perceptual quality bounds under a simulated intercept vector, an una
 \textbf{Execution Scenario} & \textbf{PSNR Index (dB)} & \textbf{SSIM Value} \\
 \midrule
 Authorized (Valid CEK)    & $\infty$ (Perfect)       & 1.0000 \\
-Unauthorized (No CEK)     & 6.2500 (Degraded)        & 0.0200 \\
+Unauthorized (No CEK)     & 8.4300 (Degraded)        & 0.1767 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -92,4 +92,4 @@ Unauthorized (No CEK)     & 6.2500 (Degraded)        & 0.0200 \\
 
 When a valid CEK is configured, the system yields clean rendering maps ($\text{PSNR} = \infty$, $\text{SSIM} = 1.0$). Conversely, under unauthorized decoding conditions, the intentional mutation of parameter sets and anchor tracking streams causes a catastrophic rendering collapse. 
 
-As plotted in Fig. 3 and summarized in Table III, the visual presentation metrics drop to a highly broken state ($\text{PSNR} = 6.25\text{ dB}$, $\text{SSIM} = 0.02$). Because the structural baseline sets are missing, standard media players cannot initialize macroblock residue calculations, rendering the output video as an unwatchable mix of static noise and corrupted macroblocks. This demonstrates sufficient practical protection for digital video distribution networks with minimal cryptographic processing cost.
+As plotted in Fig. 3 and summarized in Table III, the visual presentation metrics drop to a highly broken state ($\text{PSNR} = 8.43\text{ dB}$, $\text{SSIM} = 0.1767$). Because the structural baseline sets are missing, standard media players cannot initialize macroblock residue calculations, rendering the output video as an unwatchable mix of static noise and corrupted macroblocks. This demonstrates sufficient practical protection for digital video distribution networks with minimal cryptographic processing cost.

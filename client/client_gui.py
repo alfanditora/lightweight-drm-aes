@@ -12,8 +12,9 @@ from PIL import Image, ImageTk
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from server.packager import ExperimentPackager
 from client import DRMClientPlayer
+from metrics_utils import calculate_simulated_psnr, calculate_simulated_ssim
 
-ctk.set_appearance_mode("Light")
+ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 class SimpleVideoPlayer:
@@ -184,10 +185,10 @@ class DRMInteractiveGUI(ctk.CTk):
         auth_title = ctk.CTkLabel(self.player_mgmt_frame, text="DRM Authentication Trigger", font=ctk.CTkFont(weight="bold", size=12))
         auth_title.pack(anchor="w", padx=10, pady=(5, 0))
 
-        self.btn_play_valid = ctk.CTkButton(self.player_mgmt_frame, text="Play Video (Authorized JWT License)", fg_color="#27a745", hover_color="#218838", command=lambda: self.play_simulation(has_license=True), state="disabled")
+        self.btn_play_valid = ctk.CTkButton(self.player_mgmt_frame, text="Play Video (Authorized JWT License)", command=lambda: self.play_simulation(has_license=True), state="disabled")
         self.btn_play_valid.pack(fill="x", padx=20, pady=10)
 
-        self.btn_play_invalid = ctk.CTkButton(self.player_mgmt_frame, text="Play Video (Bypass License - Attack Mode)", fg_color="#dc3545", hover_color="#c82333", command=lambda: self.play_simulation(has_license=False), state="disabled")
+        self.btn_play_invalid = ctk.CTkButton(self.player_mgmt_frame, text="Play Video (Bypass License - Attack Mode)", command=lambda: self.play_simulation(has_license=False), state="disabled")
         self.btn_play_invalid.pack(fill="x", padx=20, pady=5)
 
         # --- Interactive Log Terminal ---
@@ -322,11 +323,14 @@ class DRMInteractiveGUI(ctk.CTk):
             self.write_log("[Warning] Attacker bypasses License Server and feeds encrypted bita directly to standard decoder...")
             
             mode = self.crypto_mode.get()
-            if "Selective" in mode:
-                self.write_log("-> Resulting Quality Metrics: PSNR = 6.25 dB | SSIM = 0.02")
+            is_sel = "Selective" in mode
+            psnr_val = calculate_simulated_psnr(has_key=False, nal_type_corrupted=is_sel)
+            ssim_val = calculate_simulated_ssim(has_key=False, nal_type_corrupted=is_sel)
+            self.write_log(f"-> Resulting Quality Metrics: PSNR = {psnr_val:.2f} dB | SSIM = {ssim_val:.4f}")
+            
+            if is_sel:
                 self.write_log("--> CRITICAL FAILURE: Video rendering broken. Displaying garbled noise matrix blocks. Completely unwatchable!")
             else:
-                self.write_log("-> Resulting Quality Metrics: PSNR = 8.12 dB | SSIM = 0.08")
                 self.write_log("--> FAILURE: Cipher block sequence evaluation failed. Screen remains completely black or static noise.")
             
             # TRIGGER PEMUTARAN VIDEO RUSAK (ATTACK SIMULATION)
