@@ -6,7 +6,7 @@ __pycache__/
 # LaTeX intermediate and generated files
 *.aux
 *.bbl
-*.bcf
+*.bcfgit 
 *.blg
 *.fdb_latexmk
 *.fls
@@ -24,5 +24,5 @@ __pycache__/
 *.snm
 *.vrb
 
-images/signature.png
+ieee-docs/images/signature.png
 .tools/
