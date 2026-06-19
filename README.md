@@ -105,9 +105,3 @@ Berdasarkan analisis performa pada dataset video berukuran hingga 1,1 GB, sistem
 ## 📝 Lisensi & Pernyataan Akademis
 
 Proyek ini disusun sebagai bagian dari luaran tugas eksperimen tugas makalah mata kuliah Kriptografi, Departemen Teknik Informatika, Institut Teknologi Bandung. Seluruh kode sumber bersifat open-source untuk kepentingan riset akademis berkelanjutan.
-
----
-
-### 💡 Tips Tambahan
-
-Anda tinggal membuat sebuah berkas baru bernama `README.md` di *root directory* proyek Anda, lalu *copy-paste* seluruh blok Markdown di atas. Dokumentasi ini akan langsung tersinkronisasi dengan file `Makefile` dan metrik data visual terbaru yang Anda miliki.
